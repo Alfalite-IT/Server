@@ -16,6 +16,11 @@ class ConfigService {
   late final String dbPublicPassword;
   late final String dbAdminUser;
   late final String dbAdminPassword;
+  
+  // Database connection details
+  late final String dbHost;
+  late final int dbPort;
+  late final String dbName;
 
   ConfigService() {
     // Note: This assumes the .env file is in the server's root directory.
@@ -41,6 +46,11 @@ class ConfigService {
     dbPublicPassword = dotEnv['DB_PUBLIC_PASSWORD'] ?? '';
     dbAdminUser = dotEnv['DB_ADMIN_USER'] ?? '';
     dbAdminPassword = dotEnv['DB_ADMIN_PASSWORD'] ?? '';
+    
+    // Database connection details
+    dbHost = dotEnv['DB_HOST'] ?? 'localhost';
+    dbPort = int.tryParse(dotEnv['DB_PORT'] ?? '5432') ?? 5432;
+    dbName = dotEnv['DB_NAME'] ?? 'alfalite_db';
 
     // SMTP Config
     smtpHost = dotEnv['SMTP_HOST'] ?? '';

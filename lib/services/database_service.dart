@@ -8,13 +8,18 @@ enum DbConnectionRole {
 
 class DatabaseService {
   final ConfigService _config;
-  final _host = 'localhost';
-  final _port = 5432;
-  final _databaseName = 'alfalite_db';
+  late final String _host;
+  late final int _port;
+  late final String _databaseName;
 
   PostgreSQLConnection? _connection;
 
-  DatabaseService(this._config);
+  DatabaseService(this._config) {
+    // Get database connection details from environment
+    _host = _config.dbHost;
+    _port = _config.dbPort;
+    _databaseName = _config.dbName;
+  }
 
   Future<PostgreSQLConnection> openConnection(DbConnectionRole role) async {
     final String username;
