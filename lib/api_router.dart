@@ -4,6 +4,7 @@ import 'handlers/auth_handlers.dart';
 import 'handlers/product_handlers.dart';
 import 'handlers/static_handlers.dart';
 import 'handlers/upload_handler.dart';
+import 'handlers/email_handlers.dart';
 import 'middleware/auth_middleware.dart';
 import 'services/auth_service.dart';
 import 'services/config_service.dart';
@@ -28,6 +29,7 @@ class ApiRouter {
     final productHandlers = ProductHandlers(_dbService);
     final authHandlers = AuthHandlers(authService, jwtService);
     final uploadHandler = UploadHandler();
+    final emailHandlers = EmailHandlers(_configService);
 
     // ======== Public Routes ========
     router.get('/', staticHandlers.rootHandler);
@@ -35,6 +37,11 @@ class ApiRouter {
     router.get('/products', productHandlers.productsHandler);
     router.get('/test_db', productHandlers.dbTestHandler);
     router.post('/login', authHandlers.loginHandler);
+    
+    // ======== Email Routes ========
+    router.post('/api/send-pdf-email', emailHandlers.sendPdfEmailHandler);
+    router.post('/api/send-quote-email', emailHandlers.sendQuoteEmailHandler);
+    router.post('/api/send-comparison-email', emailHandlers.sendComparisonEmailHandler);
 
     // ======== Protected Routes ========
     final protectedRoutes = Router()
@@ -48,8 +55,9 @@ class ApiRouter {
         .addMiddleware(createAuthMiddleware(jwtService))
         .addHandler(protectedRoutes);
 
-    // Mount the protected routes under the pipeline
-    router.mount('/', protectedPipeline);
+    // Mount the protected routes under specific paths
+    router.mount('/products', protectedPipeline);
+    router.mount('/upload', protectedPipeline);
 
     return router;
   }

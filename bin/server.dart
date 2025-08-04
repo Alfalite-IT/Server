@@ -5,6 +5,7 @@ import 'package:shelf_static/shelf_static.dart';
 import 'package:alfalite_server/api_router.dart';
 import 'package:alfalite_server/services/config_service.dart';
 import 'package:alfalite_server/services/database_service.dart';
+import 'package:alfalite_server/services/certificate_service.dart';
 
 // This function creates a dynamic CORS middleware.
 Middleware createCorsMiddleware(ConfigService config) {
@@ -55,6 +56,7 @@ void main(List<String> args) async {
   final configService = ConfigService();
   final dbService = DatabaseService(configService);
   final apiRouter = ApiRouter(dbService, configService);
+  final certificateService = CertificateService(configService);
 
   // Create a static file handler for the 'public' directory
   final staticHandler = createStaticHandler('public', defaultDocument: 'index.html');
@@ -75,8 +77,47 @@ void main(List<String> args) async {
       .addMiddleware(createCorsMiddleware(configService)) // Use the new dynamic middleware
       .addHandler(cascade.handler);
 
-  // For running in containers, we respect the PORT environment variable.
+  // Check for HTTPS configuration
+  final useHttps = configService.useHttps;
+  
+  print('🔍 Debug: Environment = ${configService.environment}');
+  print('🔍 Debug: USE_HTTPS from config = ${configService.useHttps}');
+  print('🔍 Debug: useHttps = $useHttps');
+  
+  if (useHttps) {
+    // Check if certificates exist
+    if (!await certificateService.hasValidCertificates()) {
+      print('🔐 No valid certificates found. Generating...');
+      final success = await certificateService.generateCertificate();
+      if (!success) {
+        print('⚠️  Failed to generate certificates. Starting in HTTP mode.');
+      }
+    }
+
+    // Get SSL context
+    final securityContext = certificateService.getSecurityContext();
+    if (securityContext != null) {
+      // Start HTTPS server
+      final httpsPort = int.parse(Platform.environment['HTTPS_PORT'] ?? '1337');
+      final httpsServer = await serve(handler, ip, httpsPort, securityContext: securityContext);
+      print('🔒 HTTPS Server listening on port ${httpsServer.port}');
+      
+      // Setup auto-renewal for production
+      if (configService.environment == 'production') {
+        await certificateService.setupAutoRenewal();
+      }
+    } else {
+      print('⚠️  SSL context not available. Starting in HTTP mode.');
+      await _startHttpServer(handler, ip);
+    }
+  } else {
+    // Start HTTP server for development
+    await _startHttpServer(handler, ip);
+  }
+}
+
+Future<void> _startHttpServer(Handler handler, InternetAddress ip) async {
   final port = int.parse(Platform.environment['PORT'] ?? '8080');
   final server = await serve(handler, ip, port);
-  print('Server listening on port ${server.port}');
+  print('🌐 HTTP Server listening on port ${server.port}');
 } 

@@ -10,6 +10,16 @@ class ConfigService {
   late final String smtpUsername;
   late final String smtpPassword;
   late final String companyEmail;
+  
+  // HTTPS Configuration
+  late final bool useHttps;
+  late final int httpsPort;
+  late final String certPath;
+  late final String keyPath;
+  
+  // Email abuse prevention
+  late final int emailRateLimit;
+  late final int maxRequestSize;
 
   // Database credentials
   late final String dbPublicUser;
@@ -58,6 +68,16 @@ class ConfigService {
     smtpUsername = dotEnv['SMTP_USERNAME'] ?? '';
     smtpPassword = dotEnv['SMTP_PASSWORD'] ?? '';
     companyEmail = dotEnv['COMPANY_EMAIL'] ?? '';
+
+    // HTTPS Configuration
+    useHttps = dotEnv['USE_HTTPS'] == 'true' || environment == 'production';
+    httpsPort = int.tryParse(dotEnv['HTTPS_PORT'] ?? '1337') ?? 1337;
+    certPath = dotEnv['CERT_PATH'] ?? 'certs/app.alfalite.com.crt';
+    keyPath = dotEnv['KEY_PATH'] ?? 'certs/app.alfalite.com.key';
+
+    // Email abuse prevention
+    emailRateLimit = int.tryParse(dotEnv['EMAIL_RATE_LIMIT'] ?? '10') ?? 10;
+    maxRequestSize = int.tryParse(dotEnv['MAX_REQUEST_SIZE'] ?? '10485760') ?? 10485760; // 10MB
 
     // Only require SMTP credentials in production
     if (environment == 'production') {
