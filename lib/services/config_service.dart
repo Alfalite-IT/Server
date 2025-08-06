@@ -14,8 +14,10 @@ class ConfigService {
   // HTTPS Configuration
   late final bool useHttps;
   late final int httpsPort;
-  late final String certPath;
-  late final String keyPath;
+  late final String certPathApp;
+  late final String keyPathApp;
+  late final String certPathAdmin;
+  late final String keyPathAdmin;
   
   // Email abuse prevention
   late final int emailRateLimit;
@@ -72,8 +74,12 @@ class ConfigService {
     // HTTPS Configuration
     useHttps = dotEnv['USE_HTTPS'] == 'true' || environment == 'production';
     httpsPort = int.tryParse(dotEnv['HTTPS_PORT'] ?? '1337') ?? 1337;
-    certPath = dotEnv['CERT_PATH'] ?? 'certs/app.alfalite.com.crt';
-    keyPath = dotEnv['KEY_PATH'] ?? 'certs/app.alfalite.com.key';
+    
+    // Certificate paths for both domains
+    certPathApp = dotEnv['CERT_PATH_APP'] ?? 'certs/app.alfalite.com.crt';
+    keyPathApp = dotEnv['KEY_PATH_APP'] ?? 'certs/app.alfalite.com.key';
+    certPathAdmin = dotEnv['CERT_PATH_ADMIN'] ?? 'certs/admin.alfalite.com.crt';
+    keyPathAdmin = dotEnv['KEY_PATH_ADMIN'] ?? 'certs/admin.alfalite.com.key';
 
     // Email abuse prevention
     emailRateLimit = int.tryParse(dotEnv['EMAIL_RATE_LIMIT'] ?? '10') ?? 10;

@@ -51,6 +51,39 @@ Middleware createCorsMiddleware(ConfigService config) {
   };
 }
 
+// Middleware to extract domain information from request
+Middleware createDomainMiddleware() {
+  return (innerHandler) {
+    return (request) async {
+      // Extract domain from Host header or Origin header
+      String? domain;
+      
+      // Try to get domain from Host header first
+      final host = request.headers['Host'];
+      if (host != null) {
+        domain = host.split(':').first; // Remove port if present
+      }
+      
+      // Fallback to Origin header
+      if (domain == null) {
+        final origin = request.headers['Origin'];
+        if (origin != null) {
+          final uri = Uri.parse(origin);
+          domain = uri.host;
+        }
+      }
+      
+      // Store domain in request context for later use
+      final context = {
+        'domain': domain ?? 'app.alfalite.com', // Default to app domain
+        ...request.context,
+      };
+      
+      return await innerHandler(request.change(context: context));
+    };
+  };
+}
+
 void main(List<String> args) async {
   // Initialize services and router
   final configService = ConfigService();
@@ -74,6 +107,7 @@ void main(List<String> args) async {
   // Configure a pipeline that logs requests and uses our router.
   final handler = const Pipeline()
       .addMiddleware(logRequests())
+      .addMiddleware(createDomainMiddleware()) // Add domain middleware
       .addMiddleware(createCorsMiddleware(configService)) // Use the new dynamic middleware
       .addHandler(cascade.handler);
 
@@ -85,22 +119,31 @@ void main(List<String> args) async {
   print('🔍 Debug: useHttps = $useHttps');
   
   if (useHttps) {
-    // Check if certificates exist
-    if (!await certificateService.hasValidCertificates()) {
-      print('🔐 No valid certificates found. Generating...');
-      final success = await certificateService.generateCertificate();
-      if (!success) {
-        print('⚠️  Failed to generate certificates. Starting in HTTP mode.');
+    // Check if certificates exist for both domains
+    if (!await certificateService.hasValidCertificatesForAllDomains()) {
+      print('🔐 No valid certificates found for all domains. Generating...');
+      
+      // Generate certificates for both domains
+      final appSuccess = await certificateService.generateCertificate('app.alfalite.com');
+      final adminSuccess = await certificateService.generateCertificate('admin.alfalite.com');
+      
+      if (!appSuccess || !adminSuccess) {
+        print('⚠️  Failed to generate certificates for all domains. Starting in HTTP mode.');
+        await _startHttpServer(handler, ip);
+        return;
       }
     }
 
-    // Get SSL context
-    final securityContext = certificateService.getSecurityContext();
+    // For now, use the default security context (app.alfalite.com)
+    // In a more sophisticated setup, you might want to run separate servers
+    // for each domain or use a reverse proxy like nginx
+    final securityContext = certificateService.getDefaultSecurityContext();
     if (securityContext != null) {
       // Start HTTPS server
       final httpsPort = int.parse(Platform.environment['HTTPS_PORT'] ?? '1337');
       final httpsServer = await serve(handler, ip, httpsPort, securityContext: securityContext);
       print('🔒 HTTPS Server listening on port ${httpsServer.port}');
+      print('📝 Note: Using app.alfalite.com certificate. For production, consider using nginx as reverse proxy.');
       
       // Setup auto-renewal for production
       if (configService.environment == 'production') {
