@@ -5,6 +5,7 @@ COPY pubspec.* ./
 RUN dart pub get
 
 COPY . .
+RUN dart pub get  # Run again after copying all files
 RUN dart compile exe bin/server.dart -o bin/server
 
 FROM debian:bullseye-slim
